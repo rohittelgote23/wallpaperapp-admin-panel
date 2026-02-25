@@ -48,7 +48,7 @@ export function openCloudinaryWidget(
                 folder: config.folder,
                 sources: ["local", "url", "camera"],
                 resourceType: "auto", // Supports images, videos, and GIFs
-                maxFileSize: 20000, // 100MB
+                maxFileSize: 15000000, // 15MB
                 clientAllowedFormats: ["jpg", "jpeg", "png", "gif", "mp4", "webm", "mov"],
                 multiple: false,
                 cropping: false,
