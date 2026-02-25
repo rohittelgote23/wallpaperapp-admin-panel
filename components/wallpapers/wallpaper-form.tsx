@@ -80,7 +80,7 @@ export function WallpaperForm({ initialData, onSubmit, submitLabel }: WallpaperF
     useEffect(() => {
         async function loadCategories() {
             if (!activeConfig) return;
-            const result = await getCategories(activeConfig.firebase.projectId);
+            const result = await getCategories(activeConfig.firebase.projectId, 1, 1000);
             setCategories(result.data);
         }
         loadCategories();

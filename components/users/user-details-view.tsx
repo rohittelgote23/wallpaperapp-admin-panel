@@ -54,7 +54,7 @@ export default function UserDetailsView({ userId }: UserDetailsViewProps) {
         try {
             const [userData, categoriesData] = await Promise.all([
                 getUser(activeConfig.firebase.projectId, userId),
-                getCategories(activeConfig.firebase.projectId),
+                getCategories(activeConfig.firebase.projectId, 1, 1000),
             ]);
 
             setUser(userData);

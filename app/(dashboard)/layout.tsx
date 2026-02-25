@@ -37,11 +37,11 @@ export default function DashboardLayout({
     }
 
     return (
-        <div className="grid h-screen w-full md:grid-cols-[200px_1fr] lg:grid-cols-[200px_1fr] overflow-hidden">
-            <div className="hidden border-r md:block h-full overflow-y-auto">
+        <div className="flex h-screen w-full overflow-hidden">
+            <div className="hidden border-r md:block w-[200px] flex-shrink-0 h-full overflow-y-auto">
                 <Sidebar />
             </div>
-            <div className="flex flex-col h-full overflow-hidden">
+            <div className="flex flex-col flex-1 min-w-0 h-full overflow-hidden">
                 <Header />
                 <main className="flex-1 overflow-y-auto p-4 lg:p-6">
                     {children}

@@ -98,7 +98,7 @@ export default function WallpapersView() {
 
             // Only fetch categories if we haven't already
             if (categories.length === 0) {
-                promises.push(getCategories(activeConfig.firebase.projectId));
+                promises.push(getCategories(activeConfig.firebase.projectId, 1, 1000));
             }
 
             const results = await Promise.all(promises);
