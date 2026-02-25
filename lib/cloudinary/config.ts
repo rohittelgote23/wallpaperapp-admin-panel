@@ -68,12 +68,12 @@ export function openCloudinaryWidget(
                     if (uploadedFile.resource_type === "image") {
                         thumbnailUrl = uploadedFile.secure_url.replace(
                             "/upload/",
-                            "/upload/c_thumb,w_400/"
+                            "/upload/c_thumb,w_200/"
                         );
                     } else if (uploadedFile.resource_type === "video") {
                         // For videos, get a thumbnail
                         thumbnailUrl = uploadedFile.secure_url
-                            .replace("/upload/", "/upload/so_0,w_400/")
+                            .replace("/upload/", "/upload/so_0,w_200/")
                             .replace(/\.(mp4|webm|mov)$/, ".jpg");
                     }
 
