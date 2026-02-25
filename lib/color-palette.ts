@@ -1,8 +1,6 @@
 /**
  * Extracts a color palette from an image URL using Canvas API
- * @param imageUrl - URL of the image
- * @param colorCount - Number of colors to extract (default: 5)
- * @returns Array of color names mapped to nearest base colors
+ * Returns an array of nearest base color names
  */
 export async function extractColorPalette(
     imageUrl: string,
@@ -16,59 +14,53 @@ export async function extractColorPalette(
             try {
                 const canvas = document.createElement("canvas");
                 const ctx = canvas.getContext("2d");
+                if (!ctx) return reject("Canvas not supported");
 
-                if (!ctx) {
-                    reject(new Error("Could not get canvas context"));
-                    return;
-                }
-
-                // Resize for performance
-                const scaleFactor = 100 / Math.max(img.width, img.height);
-                canvas.width = img.width * scaleFactor;
-                canvas.height = img.height * scaleFactor;
+                // Better resizing: preserve color accuracy
+                const maxSize = 250;
+                const scale = Math.min(maxSize / img.width, maxSize / img.height, 1);
+                canvas.width = img.width * scale;
+                canvas.height = img.height * scale;
 
                 ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
-                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-                const pixels = imageData.data;
+                const { data } = ctx.getImageData(0, 0, canvas.width, canvas.height);
 
-                // Sample pixels (every 10th pixel for performance)
                 const colorMap = new Map<string, number>();
 
-                for (let i = 0; i < pixels.length; i += 40) {
-                    const r = pixels[i];
-                    const g = pixels[i + 1];
-                    const b = pixels[i + 2];
-                    const a = pixels[i + 3];
+                // Highly accurate sampling (every 16th pixel)
+                for (let i = 0; i < data.length; i += 16 * 4) {
+                    const r = data[i];
+                    const g = data[i + 1];
+                    const b = data[i + 2];
+                    const a = data[i + 3];
 
-                    // Skip transparent pixels
-                    if (a < 125) continue;
+                    if (a < 150) continue; // ignore transparent pixels
 
-                    // Round to nearest 10 to group similar colors
-                    const roundedR = Math.round(r / 10) * 10;
-                    const roundedG = Math.round(g / 10) * 10;
-                    const roundedB = Math.round(b / 10) * 10;
+                    // Smooth grouping (better than rounding by 10)
+                    const rr = Math.round(r / 5) * 5;
+                    const gg = Math.round(g / 5) * 5;
+                    const bb = Math.round(b / 5) * 5;
 
-                    const colorKey = `${roundedR},${roundedG},${roundedB}`;
-                    colorMap.set(colorKey, (colorMap.get(colorKey) || 0) + 1);
+                    const key = `${rr},${gg},${bb}`;
+                    colorMap.set(key, (colorMap.get(key) || 0) + 1);
                 }
 
-                // Sort by frequency and get top colors
-                const sortedColors = Array.from(colorMap.entries())
+                // Pick top dominant colors
+                const dominantHexColors = Array.from(colorMap.entries())
                     .sort((a, b) => b[1] - a[1])
                     .slice(0, colorCount)
-                    .map(([color]) => {
-                        const [r, g, b] = color.split(",").map(Number);
+                    .map(([rgb]) => {
+                        const [r, g, b] = rgb.split(",").map(Number);
                         return rgbToHex(r, g, b);
                     });
 
-                // Map to nearest base colors and remove duplicates (returning names)
-                const baseColorsNames = sortedColors.map(getNearestBaseColorName);
-                const uniqueBaseColors = Array.from(new Set(baseColorsNames));
+                // Convert hex → base color names
+                const baseColorNames = dominantHexColors.map(getNearestBaseColorName);
 
-                resolve(uniqueBaseColors);
-            } catch (error) {
-                reject(error);
+                resolve([...new Set(baseColorNames)]);
+            } catch (err) {
+                reject(err);
             }
         };
 
@@ -77,14 +69,28 @@ export async function extractColorPalette(
     });
 }
 
+/* ------------------------------
+    Color Conversion Utilities
+--------------------------------*/
+
 function rgbToHex(r: number, g: number, b: number): string {
-    return "#" + [r, g, b]
-        .map(x => {
-            const hex = x.toString(16);
-            return hex.length === 1 ? "0" + hex : hex;
-        })
-        .join("");
+    return (
+        "#" +
+        [r, g, b].map((x) => x.toString(16).padStart(2, "0")).join("")
+    );
 }
+
+function hexToRgb(hex: string) {
+    return {
+        r: parseInt(hex.slice(1, 3), 16),
+        g: parseInt(hex.slice(3, 5), 16),
+        b: parseInt(hex.slice(5, 7), 16),
+    };
+}
+
+/* ------------------------------
+       Base Color Definitions
+--------------------------------*/
 
 export const BASE_COLORS = [
     { name: "red", hex: "#FF0000" },
@@ -99,37 +105,53 @@ export const BASE_COLORS = [
     { name: "white", hex: "#FFFFFF" },
     { name: "gray", hex: "#808080" },
     { name: "teal", hex: "#008080" },
-    { name: "navy", hex: "#000080" }
+    { name: "navy", hex: "#000080" },
+    { name: "sand", hex: "#C2B280" },
+    { name: "light blue", hex: "#ADD8E6" },
+    { name: "cyan", hex: "#00FFFF" },
+    { name: "magenta", hex: "#FF00FF" },
+    { name: "maroon", hex: "#800000" },
+    { name: "olive", hex: "#808000" },
+    { name: "peach", hex: "#FFE5B4" }
 ];
 
-function hexToRgb(hex: string) {
-    const r = parseInt(hex.slice(1, 3), 16);
-    const g = parseInt(hex.slice(3, 5), 16);
-    const b = parseInt(hex.slice(5, 7), 16);
-    return { r, g, b };
-}
+/* ------------------------------
+    Redmean Color Distance
+--------------------------------*/
 
-function colorDistance(rgb1: { r: number, g: number, b: number }, rgb2: { r: number, g: number, b: number }) {
+function colorDistance(
+    rgb1: { r: number; g: number; b: number },
+    rgb2: { r: number; g: number; b: number }
+) {
+    const rMean = (rgb1.r + rgb2.r) / 2;
+    const dR = rgb1.r - rgb2.r;
+    const dG = rgb1.g - rgb2.g;
+    const dB = rgb1.b - rgb2.b;
+
     return Math.sqrt(
-        Math.pow(rgb1.r - rgb2.r, 2) +
-        Math.pow(rgb1.g - rgb2.g, 2) +
-        Math.pow(rgb1.b - rgb2.b, 2)
+        (2 + rMean / 256) * dR * dR +
+        4 * dG * dG +
+        (2 + (255 - rMean) / 256) * dB * dB
     );
 }
 
+/* ------------------------------
+    Matching HEX → Base Color Name
+--------------------------------*/
+
 export function getNearestBaseColorName(hex: string): string {
     const rgb = hexToRgb(hex);
-    let minDistance = Infinity;
-    let closestName = BASE_COLORS[0].name;
 
-    for (const baseColor of BASE_COLORS) {
-        const baseRgb = hexToRgb(baseColor.hex);
-        const distance = colorDistance(rgb, baseRgb);
-        if (distance < minDistance) {
-            minDistance = distance;
-            closestName = baseColor.name;
+    let minDist = Infinity;
+    let bestMatch = BASE_COLORS[0].name;
+
+    for (const base of BASE_COLORS) {
+        const dist = colorDistance(rgb, hexToRgb(base.hex));
+        if (dist < minDist) {
+            minDist = dist;
+            bestMatch = base.name;
         }
     }
 
-    return closestName;
+    return bestMatch;
 }
