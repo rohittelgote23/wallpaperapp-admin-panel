@@ -46,19 +46,35 @@ export async function extractColorPalette(
                     colorMap.set(key, (colorMap.get(key) || 0) + 1);
                 }
 
-                // Pick top dominant colors
-                const dominantHexColors = Array.from(colorMap.entries())
+                // Sort dominant colors by frequency
+                const sortedHexColors = Array.from(colorMap.entries())
                     .sort((a, b) => b[1] - a[1])
-                    .slice(0, colorCount)
                     .map(([rgb]) => {
                         const [r, g, b] = rgb.split(",").map(Number);
                         return rgbToHex(r, g, b);
                     });
 
-                // Convert hex → base color names
-                const baseColorNames = dominantHexColors.map(getNearestBaseColorName);
+                // Extract unique base colors (max: colorCount, which is 5)
+                const uniqueBaseColors = new Set<string>();
+                for (const hex of sortedHexColors) {
+                    uniqueBaseColors.add(getNearestBaseColorName(hex));
+                    if (uniqueBaseColors.size >= colorCount) break;
+                }
 
-                resolve([...new Set(baseColorNames)]);
+                const resultColors = Array.from(uniqueBaseColors);
+
+                // Enforce minimum 3 colors by adding neutral fallbacks if needed
+                if (resultColors.length < 3) {
+                    const fallbacks = ["black", "gray", "white"];
+                    for (const fb of fallbacks) {
+                        if (!resultColors.includes(fb)) {
+                            resultColors.push(fb);
+                        }
+                        if (resultColors.length >= 3) break;
+                    }
+                }
+
+                resolve(resultColors);
             } catch (err) {
                 reject(err);
             }
