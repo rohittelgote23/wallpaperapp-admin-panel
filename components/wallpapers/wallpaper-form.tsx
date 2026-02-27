@@ -16,7 +16,7 @@ import { ColorPaletteGenerator } from "./color-palette-generator";
 import { Wallpaper } from "@/types/wallpaper";
 import { Category } from "@/types/category";
 import { Badge } from "@/components/ui/badge";
-import { X } from "lucide-react";
+import { X, Check } from "lucide-react";
 import { BASE_COLORS } from "@/lib/color-palette";
 
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -272,18 +272,41 @@ export function WallpaperForm({ initialData, onSubmit, submitLabel }: WallpaperF
                         onPaletteGenerated={(colors) => setValue("color_palette", colors)}
                     />
 
-                    <div className="flex gap-2 flex-wrap">
-                        {(watch("color_palette") || []).map((colorName, index) => {
-                            const hex = BASE_COLORS.find(c => c.name === colorName)?.hex || "#CCCCCC";
-                            return (
-                                <div
-                                    key={index}
-                                    className="h-12 w-12 rounded border-2 border-gray-300"
-                                    style={{ backgroundColor: hex }}
-                                    title={colorName}
-                                />
-                            );
-                        })}
+                    <div className="space-y-3 mt-4">
+                        <Label>Selected Colors (max 5)</Label>
+                        <div className="flex gap-3 flex-wrap">
+                            {BASE_COLORS.map((baseColor) => {
+                                const current = watch("color_palette") || [];
+                                const isSelected = current.includes(baseColor.name);
+                                const isWhiteish = ["white", "yellow", "sand", "pink", "peach", "light blue", "cyan"].includes(baseColor.name);
+
+                                return (
+                                    <button
+                                        type="button"
+                                        key={baseColor.name}
+                                        onClick={() => {
+                                            if (isSelected) {
+                                                setValue("color_palette", current.filter((c) => c !== baseColor.name));
+                                            } else {
+                                                if (current.length < 5) {
+                                                    setValue("color_palette", [...current, baseColor.name]);
+                                                }
+                                            }
+                                        }}
+                                        className={`group relative h-10 w-10 md:h-12 md:w-12 rounded-full flex items-center justify-center transition-all ${isSelected
+                                                ? "ring-2 ring-primary ring-offset-2 scale-110 shadow-md border-transparent"
+                                                : "border border-gray-300 hover:scale-105 hover:shadow-sm"
+                                            }`}
+                                        style={{ backgroundColor: baseColor.hex }}
+                                        title={baseColor.name}
+                                    >
+                                        {isSelected && (
+                                            <Check className={`h-5 w-5 md:h-6 md:w-6 ${isWhiteish ? "text-slate-800" : "text-white"}`} />
+                                        )}
+                                    </button>
+                                );
+                            })}
+                        </div>
                     </div>
 
                     {errors.color_palette && (
